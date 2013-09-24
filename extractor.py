@@ -1,8 +1,8 @@
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from sys import argv
 from HTMLParser import HTMLParser
 
-import re, htmlentitydefs, uuid, shutil
+import re, htmlentitydefs, uuid
 
 
 class MLStripper(HTMLParser):
@@ -15,7 +15,6 @@ class MLStripper(HTMLParser):
         return ''.join(self.fed)
 
 # Decodes HTML or XML character entities from a text string.
-
 def unescape(text):
     def fixup(m):
         text = m.group(0)
@@ -38,14 +37,12 @@ def unescape(text):
     return re.sub("&#?\w+;", fixup, text)
 
 # Removes HTML tags
-
 def strip_tags(html):
     s = MLStripper()
     s.feed(html)
     return s.get_data()
 
 # Iterative text extractor
-
 def split_text_in_tag(text, tag):
     splited_text = str(text).split(str(tag))
     result = []
@@ -55,9 +52,9 @@ def split_text_in_tag(text, tag):
         result.append(cleaned_string)
     return result 
 
-# --------------
-#   The script
-# --------------
+
+
+# ---------- The script ---------- #
 
 script, jqz_file = argv
 
@@ -118,6 +115,10 @@ for question_record in question_records:
         extracted_text = BeautifulSoup(unescape(question.string))
         # store the extracted reading texts
         reading_texts.append(extracted_text)
+
+# -----------------------
+#  CREATE THE XHTML FILE 
+# -----------------------
 
 # Open the base xhtml file
 
@@ -191,13 +192,10 @@ reading_spot = xhtml_soup.find('h3', text="Irakurri eta erantzun:")
 # insert it
 reading_spot.insert_after(big_html_chunk)
 
-# Write the file
-
+# write the final xhtml file
+print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
 with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
-
-print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
-
 print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
 
 
