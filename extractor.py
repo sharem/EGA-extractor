@@ -1,6 +1,9 @@
 from bs4 import BeautifulSoup
 from sys import argv
 from HTMLParser import HTMLParser
+from xml.etree.ElementTree import Element, SubElement
+from xml.etree import ElementTree
+from xml.dom import minidom
 
 import re, htmlentitydefs, uuid
 
@@ -54,44 +57,44 @@ def split_text_in_tag(text, tag):
 
 
 
-# ---------- The script ---------- #
+# ----------# The script # ---------- #
 
 script, jqz_file = argv
 
 FINAL_XHTML_FILE_NAME = '2_atariko.xhtml'
 BASE_XHTML_FILE_NAME = 'atariko_base.xhtml'
 
-# Open jqz file
+# -----------------
+#  DATA EXTRACTION 
+# -----------------
+
+# Read jqz file
 
 with open (jqz_file, "r") as jqz:
 	soup = BeautifulSoup(jqz, 'xml')
 
-# Find the usefull EGA data
+# Find the usefull data
 
 question_records = soup.find_all("question-record")
 
-# Generate new XML
+# Extract data and process it
 
-from xml.etree.ElementTree import Element, SubElement
-from xml.etree import ElementTree
-from xml.dom import minidom
-
+# useful elements to process the data
 root = Element('stb_ag')
 root.set('uuid', str(uuid.uuid1()))
 
-reading_texts = []
-
-# Start the construction of the XML tree
+html_chunks = []
 
 for question_record in question_records:
-
-    # Extract question and answers data
     
     question = question_record.findChild("question")
     answers = question_record.findChild("answers").findChildren("answer")
 
+    # If the question is not a reading exercise text
     if len(strip_tags(unescape(question.string))) < 300:
-        # If the question is not a reading exercise text
+        
+        # Extract and process data for the STB file
+         
         stb_test = SubElement(root, 'stb_test')
         stb_test.set('uuid', str(uuid.uuid1()))
 
@@ -110,17 +113,71 @@ for question_record in question_records:
             # print answer.findChild("correct").string
             if answer.findChild("correct").string == '1':
                 stb_option.set('correct', 'true')
-            # print strip_tags(unescape(question.string))
+           
+    # If the question is a reading exercise text (len()>300)
     else: 
+        
+        # Extract and process data for the XHTML file
+
         extracted_text = BeautifulSoup(unescape(question.string))
-        # store the extracted reading texts
-        reading_texts.append(extracted_text)
+
+        # clean and extract data from extracted_texts 
+        text_title = extracted_text.strong.extract().text
+        # print text_title
+        text_author = extracted_text.em.extract().text
+        # print text_author   
+        splited_text = split_text_in_tag(extracted_text,extracted_text.find('br'))
+        article = splited_text[0]
+        # print article
+         
+        #
+        # NOTE: The first questions come right after the readinf text in the same <question> tag, so
+        #       they have to be sended to the start of the stb file... >.<
+        #
+        
+        if splited_text[1]:
+            first_question = str(splited_text[1])
+            # print first_question
+
+        # create html chunks for the data to insert
+        html_chunk = BeautifulSoup()
+
+        div = html_chunk.new_tag("div")
+        div['class'] = 'readingText'
+
+        h4 = html_chunk.new_tag("h4")
+        h4.append(text_title)
+
+        original_text = html_chunk.new_tag("p")
+        original_text.append(article)
+
+        quote_source = html_chunk.new_tag("p")
+        quote_source['class'] = 'quoteSource'
+        quote_source.append(text_author)
+
+        activities = []
+        for x in range(1, 4):
+            activity = html_chunk.new_tag("div")
+            activity['class'] = 'stb_activities'
+            activity['data-file'] = 'at_ej' + str(x) + '.stb'
+            activity['data-group'] = 'STB UUID'
+            activities.append(activity)
+
+        html_chunk.append(div)
+        div.append(h4)
+        div.append(original_text)
+        div.append(quote_source)
+
+        html_chunk.append(activities[0])
+        html_chunk.append(html_chunk.new_tag('hr'))
+
+        html_chunks.append(html_chunk)
 
 # -----------------------
 #  CREATE THE XHTML FILE 
 # -----------------------
 
-# Open the base xhtml file
+# Read the base xhtml file
 
 print("Opening %s file..." % (BASE_XHTML_FILE_NAME,))
 with open (BASE_XHTML_FILE_NAME, "r") as xhtml_file:
@@ -130,58 +187,7 @@ with open (BASE_XHTML_FILE_NAME, "r") as xhtml_file:
 
 print("Filling %s file with data..." % (FINAL_XHTML_FILE_NAME,))
 
-html_chunks = []
-# clean and extract data from dirty_texts
-for dirty_text in reading_texts:   
-    text_title = dirty_text.strong.extract().text
-    # print text_title
-    text_author = dirty_text.em.extract().text
-    # print text_author   
-    splited_text = split_text_in_tag(dirty_text,dirty_text.find('br'))
-    #
-    # NOTE: The first questions come right after the readinf text in the same <question> tag >.<
-    #
-    # if splited_text[1]:
-    #     first_question = str(splited_text[1])
-    #     # print first_question
-    article = splited_text[0]
-    # print article
-    
-    # create html chunks for the data to insert
-    html_chunk = BeautifulSoup()
-
-    div = xhtml_soup.new_tag("div")
-    div['class'] = 'readingText'
-
-    h4 = xhtml_soup.new_tag("h4")
-    h4.append(text_title)
-
-    original_text = xhtml_soup.new_tag("p")
-    original_text.append(article)
-
-    quote_source = xhtml_soup.new_tag("p")
-    quote_source['class'] = 'quoteSource'
-    quote_source.append(text_author)
-
-    activities = []
-    for x in range(1, 4):
-        activity = xhtml_soup.new_tag("div")
-        activity['class'] = 'stb_activities'
-        activity['data-file'] = 'at_ej' + str(x) + '.stb'
-        activity['data-group'] = 'STB UUID'
-        activities.append(activity)
-
-    html_chunk.append(div)
-    div.append(h4)
-    div.append(original_text)
-    div.append(quote_source)
-
-    html_chunk.append(activities[0])
-    html_chunk.append(xhtml_soup.new_tag('hr'))
-
-    html_chunks.append(html_chunk)
-
-# unify these small chunks in a larger one
+# unify the small chunks in a larger one
 big_html_chunk = BeautifulSoup()
 for elem in html_chunks:
     big_html_chunk.append(elem)
@@ -198,7 +204,9 @@ with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
 print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
 
-
+# ----------------------
+#  CREATE THE STB FILE 
+# ----------------------
 
 rough_string = ElementTree.tostring(root, 'utf-8')
 reparsed = minidom.parseString(rough_string)
