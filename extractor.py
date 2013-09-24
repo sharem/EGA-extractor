@@ -191,12 +191,10 @@ reading_spot = xhtml_soup.find('h3', text="Irakurri eta erantzun:")
 # insert it
 reading_spot.insert_after(big_html_chunk)
 
-print xhtml_soup.prettify()
-
 # Write the file
 
-# with open (BASE_XHTML_FILE_NAME, "a") as new_xhtml_file:
-    # new_xhtml_file.write()
+with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
+    new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
 
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
 
