@@ -138,6 +138,26 @@ for question_record in question_records:
         if splited_text[1]:
             first_question = str(splited_text[1])
             # print first_question
+            
+        # REFACTOR THIS!!!
+        stb_test = SubElement(root, 'stb_test')
+        stb_test.set('uuid', str(uuid.uuid1()))
+
+        config = SubElement(stb_test, 'config')
+        config.set('multiple', 'false')
+        config.set('shuffle', 'true')
+
+        stb_question = SubElement(stb_test, 'stb_question')
+        stb_question.text = first_question
+
+        for answer in answers:   
+            stb_option = SubElement(stb_test, 'stb_option')
+            stb_option.text = strip_tags(unescape(answer.findChild("text").string))
+            
+            # If correct (=1) answer set the attribute 'correct'
+            # print answer.findChild("correct").string
+            if answer.findChild("correct").string == '1':
+                stb_option.set('correct', 'true')
 
         # create html chunks for the data to insert
         html_chunk = BeautifulSoup()
@@ -205,7 +225,7 @@ with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
 print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
 
 # ----------------------
-#  CREATE THE STB FILE 
+#  CREATE THE STB FILES 
 # ----------------------
 
 rough_string = ElementTree.tostring(root, 'utf-8')
