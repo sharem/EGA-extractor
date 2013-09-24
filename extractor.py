@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup, Tag
 from sys import argv
 from HTMLParser import HTMLParser
 
-import re, htmlentitydefs, uuid
+import re, htmlentitydefs, uuid, shutil
 
 
 class MLStripper(HTMLParser):
@@ -59,12 +59,15 @@ def split_text_in_tag(text, tag):
 #   The script
 # --------------
 
-script, filename = argv
+script, jqz_file = argv
+
+FINAL_XHTML_FILE_NAME = '2_atariko.xhtml'
+BASE_XHTML_FILE_NAME = 'atariko_base.xhtml'
 
 # Open jqz file
 
-with open (filename, "r") as jqz_file:
-	soup = BeautifulSoup(jqz_file, 'xml')
+with open (jqz_file, "r") as jqz:
+	soup = BeautifulSoup(jqz, 'xml')
 
 # Find the usefull EGA data
 
@@ -79,33 +82,7 @@ from xml.dom import minidom
 root = Element('stb_ag')
 root.set('uuid', str(uuid.uuid1()))
 
-# Construct base xhtml
-xhtml = BeautifulSoup()
-
-html = xhtml.new_tag('html')
-html['xmlns'] = "http://www.w3.org/1999/xhtml"
-
-head = xhtml.new_tag('head')
-meta = xhtml.new_tag('meta')
-meta['content'] = ""
-meta['name'] = "viewport"
-link = xhtml.new_tag('link')
-link['href'] = "ega.css"
-link['rel'] = "stylesheet"
-link['type'] = "text/css"
-html['xmlns'] = "http://www.w3.org/1999/xhtml"
-title = xhtml.new_tag('title')
-
-body = xhtml.new_tag('body')
-header = xhtml.new_tag('div')
-header['id'] = "header"
-title = xhtml.new_tag('h1')
-oharrak_title = xhtml.new_tag('h2')
-
-oharrak = xhtml.new_tag('head')
-
-ariketak_title = xhtml.new_tag('head')
-ariketak_subtitle = xhtml.new_tag('head')
+reading_texts = []
 
 # Start the construction of the XML tree
 
@@ -138,65 +115,94 @@ for question_record in question_records:
                 stb_option.set('correct', 'true')
             # print strip_tags(unescape(question.string))
     else: 
-        # process text
-        dirty_text = BeautifulSoup(unescape(question.string))
+        extracted_text = BeautifulSoup(unescape(question.string))
+        # store the extracted reading texts
+        reading_texts.append(extracted_text)
 
-        # extract data from cleaned text
-        
-        text_title = dirty_text.strong.extract().text
-        # print text_title
+# Open the base xhtml file
 
-        text_author = dirty_text.em.extract().text
-        # print text_author
-        
-        splited_text = split_text_in_tag(dirty_text,dirty_text.find('br'))
+print("Opening %s file..." % (BASE_XHTML_FILE_NAME,))
+with open (BASE_XHTML_FILE_NAME, "r") as xhtml_file:
+    xhtml_soup = BeautifulSoup(xhtml_file, 'html')
 
-        article = splited_text[0]
-        # print article
+# Fill the base xhtml file with the extracted data
 
-        #
-        # The first questions come right after the readinf text in the same <question> tag >.<
-        #
-        if splited_text[1]:
-            first_question = str(splited_text[1])
-            # print first_question
+print("Filling %s file with data..." % (FINAL_XHTML_FILE_NAME,))
 
-        div = xhtml.new_tag("div")
-        div['class'] = 'readingText'
+html_chunks = []
+# clean and extract data from dirty_texts
+for dirty_text in reading_texts:   
+    text_title = dirty_text.strong.extract().text
+    # print text_title
+    text_author = dirty_text.em.extract().text
+    # print text_author   
+    splited_text = split_text_in_tag(dirty_text,dirty_text.find('br'))
+    #
+    # NOTE: The first questions come right after the readinf text in the same <question> tag >.<
+    #
+    # if splited_text[1]:
+    #     first_question = str(splited_text[1])
+    #     # print first_question
+    article = splited_text[0]
+    # print article
+    
+    # create html chunks for the data to insert
+    html_chunk = BeautifulSoup()
 
-        h4 = xhtml.new_tag("h4")
-        h4.append(text_title)
+    div = xhtml_soup.new_tag("div")
+    div['class'] = 'readingText'
 
-        original_text = xhtml.new_tag("p")
-        original_text.append(article)
+    h4 = xhtml_soup.new_tag("h4")
+    h4.append(text_title)
 
-        quote_source = xhtml.new_tag("p")
-        quote_source['class'] = 'quoteSource'
-        quote_source.append(text_author)
+    original_text = xhtml_soup.new_tag("p")
+    original_text.append(article)
 
-        activities = []
-        for x in range(1, 4):
-            activity = xhtml.new_tag("div")
-            activity['class'] = 'stb_activities'
-            activity['data-file'] = 'at_ej' + str(x) + '.stb'
-            activity['data-group'] = 'XXXXXXXXXX'
-            activities.append(activity)
-        # print activities
+    quote_source = xhtml_soup.new_tag("p")
+    quote_source['class'] = 'quoteSource'
+    quote_source.append(text_author)
 
-        # generate html tree
-        xhtml.append(div)
+    activities = []
+    for x in range(1, 4):
+        activity = xhtml_soup.new_tag("div")
+        activity['class'] = 'stb_activities'
+        activity['data-file'] = 'at_ej' + str(x) + '.stb'
+        activity['data-group'] = 'STB UUID'
+        activities.append(activity)
 
-        div.append(h4)
-        div.append(original_text)
-        div.append(quote_source)
+    html_chunk.append(div)
+    div.append(h4)
+    div.append(original_text)
+    div.append(quote_source)
 
-        xhtml.append(activities[0])
-        xhtml.append(xhtml.new_tag('hr'))
-        
+    html_chunk.append(activities[0])
+    html_chunk.append(xhtml_soup.new_tag('hr'))
+
+    html_chunks.append(html_chunk)
+
+# unify these small chunks in a larger one
+big_html_chunk = BeautifulSoup()
+for elem in html_chunks:
+    big_html_chunk.append(elem)
+
+# find the spot where this big html chunk has to be inserted
+reading_spot = xhtml_soup.find('h3', text="Irakurri eta erantzun:")
+
+# insert it
+reading_spot.insert_after(big_html_chunk)
+
+print xhtml_soup.prettify()
+
+# Write the file
+
+# with open (BASE_XHTML_FILE_NAME, "a") as new_xhtml_file:
+    # new_xhtml_file.write()
+
+print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
+
+print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
 
 
-
-        print xhtml.prettify()        
 
 rough_string = ElementTree.tostring(root, 'utf-8')
 reparsed = minidom.parseString(rough_string)
