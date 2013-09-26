@@ -156,7 +156,6 @@ for question_record in question_records:
             stb_option.text = strip_tags(unescape(answer.findChild("text").string))
             
             # If correct (=1) answer set the attribute 'correct'
-            # print answer.findChild("correct").string
             if answer.findChild("correct").string == '1':
                 stb_option.set('correct', 'true')
 
@@ -208,7 +207,9 @@ stb_uuids.append(stb_uuid)
 # ----------------------
 
 # separate data for each stb file
-# first 4 questions are for at_ej1.stb and at_ej2.stb (2 questions for each stb)
+# 
+# NOTE: the first 4 questions are for at_ej1.stb and at_ej2.stb (2 questions for each stb)
+# 
 separated_stb_file_data=[]
 for i in range(0,2):
     limit = 2
@@ -221,16 +222,22 @@ for i in range(0,2):
 
 separated_stb_file_data.append(root.findall('stb_test'))
 
+# complete and write the .stb files
 for i in range(1,4):
+    stb_file_name = 'at_ej' + str(i) + '.stb'
+    # construct each .stb file's structure 
+    print("Filling %s file with data..." % (stb_file_name,))
     stb_ag = Element('stb_ag')
     stb_ag.set('uuid', stb_uuids[i-1])
     for j in separated_stb_file_data[i-1]:
         stb_ag.append(j)
-
+    # write each file
+    print("Writing %s file..." % (stb_file_name,))
     rough_string = ElementTree.tostring(stb_ag, 'utf-8')
     reparsed = minidom.parseString(rough_string)
-    with open('at_ej' + str(i) + '.stb', 'w') as new_stb_file:
+    with open(stb_file_name, 'w') as new_stb_file:
         new_stb_file.write(reparsed.toprettyxml(indent="  ", encoding="UTF-8"))
+        print("File %s successfully created!" % (stb_file_name,))
 
 # -----------------------
 #  CREATE THE XHTML FILE 
@@ -264,4 +271,4 @@ question_spot.insert_after(activity3)
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
 with open (FINAL_XHTML_FILE_NAME, "w") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
-print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
+    print("File %s successfully created!" % (FINAL_XHTML_FILE_NAME,))
