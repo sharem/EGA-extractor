@@ -80,9 +80,10 @@ question_records = soup.find_all("question-record")
 # Extract data and process it
 
 # useful elements to process the data
-root = Element('stb_ag')
-root.set('uuid', str(uuid.uuid1()))
-
+root = Element('galderak')
+stb_uuids = []
+# root.set('uuid', str(uuid.uuid1()))
+x = 1
 html_chunks = []
 
 for question_record in question_records:
@@ -175,23 +176,55 @@ for question_record in question_records:
         quote_source['class'] = 'quoteSource'
         quote_source.append(text_author)
 
-        activities = []
-        for x in range(1, 4):
-            activity = html_chunk.new_tag("div")
-            activity['class'] = 'stb_activities'
-            activity['data-file'] = 'at_ej' + str(x) + '.stb'
-            activity['data-group'] = 'STB UUID'
-            activities.append(activity)
-
+        # activities = []
+        activity = html_chunk.new_tag("div")
+        activity['class'] = 'stb_activities'
+        activity['data-file'] = 'at_ej' + str(x) + '.stb'
+        # create a uuid and save it to include it in the xhtml file
+        stb_uuid = str(uuid.uuid1())
+        print stb_uuid
+        stb_uuids.append(stb_uuid)
+        activity['data-group'] = stb_uuid
+        # activities.append(activity)
+        # print stb_uuids
         html_chunk.append(div)
         div.append(h4)
         div.append(original_text)
         div.append(quote_source)
 
-        html_chunk.append(activities[0])
+        html_chunk.append(activity)
         html_chunk.append(html_chunk.new_tag('hr'))
 
         html_chunks.append(html_chunk)
+
+# ----------------------
+#  CREATE THE STB FILES 
+# ----------------------
+
+# separate data for each stb file
+# first 4 questions are for at_ej1.stb and at_ej2.stb (2 questions for each stb)
+separated_stb_file_data=[]
+for i in range(0,2):
+    limit = 2
+    at_ej_tests = root.findall('stb_test')[:limit]
+    separated_stb_file_data.append(at_ej_tests)
+
+    # after extarcting them erase them from the tests-compilation
+    for i in range(0,limit):
+        root.remove(at_ej_tests[i])
+
+separated_stb_file_data.append(root.findall('stb_test'))
+
+for i in range(1,3):
+    stb_ag = Element('stb_ag')
+    stb_ag.set('uuid', stb_uuids[i-1])
+    for j in separated_stb_file_data[i-1]:
+        stb_ag.append(j)
+
+    rough_string = ElementTree.tostring(stb_ag, 'utf-8')
+    reparsed = minidom.parseString(rough_string)
+    with open('at_ej' + str(i) + '.stb', 'a') as new_stb_file:
+        new_stb_file.write(reparsed.toprettyxml(indent="  ", encoding="UTF-8"))
 
 # -----------------------
 #  CREATE THE XHTML FILE 
@@ -214,22 +247,23 @@ for elem in html_chunks:
 
 # find the spot where this big html chunk has to be inserted
 reading_spot = xhtml_soup.find('h3', text="Irakurri eta erantzun:")
-
 # insert it
 reading_spot.insert_after(big_html_chunk)
+
+# insert the last activity
+question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
+
+activity3 = html_chunk.new_tag("div")
+activity3['class'] = 'stb_activities'
+activity3['data-file'] = 'at_ej3.stb'
+stb_uuid = str(uuid.uuid1())
+activity3['data-group'] = stb_uuid
+stb_uuids.append(stb_uuid)
+
+question_spot.insert_after(activity3)
 
 # write the final xhtml file
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
 with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
 print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
-
-# ----------------------
-#  CREATE THE STB FILES 
-# ----------------------
-
-rough_string = ElementTree.tostring(root, 'utf-8')
-reparsed = minidom.parseString(rough_string)
-
-with open('prueba.stb', 'a') as new_stb_file:
-	new_stb_file.write(reparsed.toprettyxml(indent="  ", encoding="UTF-8"))
