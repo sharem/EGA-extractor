@@ -180,6 +180,7 @@ for question_record in question_records:
         activity = html_chunk.new_tag("div")
         activity['class'] = 'stb_activities'
         activity['data-file'] = 'at_ej' + str(x) + '.stb'
+        x += 1
         # create a uuid and save it to include it in the xhtml file
         stb_uuid = str(uuid.uuid1())
         print stb_uuid
@@ -223,7 +224,7 @@ for i in range(1,3):
 
     rough_string = ElementTree.tostring(stb_ag, 'utf-8')
     reparsed = minidom.parseString(rough_string)
-    with open('at_ej' + str(i) + '.stb', 'a') as new_stb_file:
+    with open('at_ej' + str(i) + '.stb', 'w') as new_stb_file:
         new_stb_file.write(reparsed.toprettyxml(indent="  ", encoding="UTF-8"))
 
 # -----------------------
@@ -264,6 +265,6 @@ question_spot.insert_after(activity3)
 
 # write the final xhtml file
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
-with open (FINAL_XHTML_FILE_NAME, "a") as new_xhtml_file:
+with open (FINAL_XHTML_FILE_NAME, "w") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
 print("File %s successfully created" % (FINAL_XHTML_FILE_NAME,))
