@@ -140,7 +140,7 @@ for question_record in question_records:
             first_question = str(splited_text[1])
             # print first_question
             
-        # REFACTOR THIS!!!
+        # THIS IS UGLY!!! D:
         stb_test = SubElement(root, 'stb_test')
         stb_test.set('uuid', str(uuid.uuid1()))
 
@@ -176,18 +176,15 @@ for question_record in question_records:
         quote_source['class'] = 'quoteSource'
         quote_source.append(text_author)
 
-        # activities = []
         activity = html_chunk.new_tag("div")
         activity['class'] = 'stb_activities'
         activity['data-file'] = 'at_ej' + str(x) + '.stb'
         x += 1
         # create a uuid and save it to include it in the xhtml file
         stb_uuid = str(uuid.uuid1())
-        print stb_uuid
         stb_uuids.append(stb_uuid)
         activity['data-group'] = stb_uuid
-        # activities.append(activity)
-        # print stb_uuids
+
         html_chunk.append(div)
         div.append(h4)
         div.append(original_text)
@@ -197,6 +194,14 @@ for question_record in question_records:
         html_chunk.append(html_chunk.new_tag('hr'))
 
         html_chunks.append(html_chunk)
+
+# create the third activity
+activity3 = html_chunk.new_tag("div")
+activity3['class'] = 'stb_activities'
+activity3['data-file'] = 'at_ej3.stb'
+stb_uuid = str(uuid.uuid1())
+activity3['data-group'] = stb_uuid
+stb_uuids.append(stb_uuid)
 
 # ----------------------
 #  CREATE THE STB FILES 
@@ -216,7 +221,7 @@ for i in range(0,2):
 
 separated_stb_file_data.append(root.findall('stb_test'))
 
-for i in range(1,3):
+for i in range(1,4):
     stb_ag = Element('stb_ag')
     stb_ag.set('uuid', stb_uuids[i-1])
     for j in separated_stb_file_data[i-1]:
@@ -253,14 +258,6 @@ reading_spot.insert_after(big_html_chunk)
 
 # insert the last activity
 question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
-
-activity3 = html_chunk.new_tag("div")
-activity3['class'] = 'stb_activities'
-activity3['data-file'] = 'at_ej3.stb'
-stb_uuid = str(uuid.uuid1())
-activity3['data-group'] = stb_uuid
-stb_uuids.append(stb_uuid)
-
 question_spot.insert_after(activity3)
 
 # write the final xhtml file
