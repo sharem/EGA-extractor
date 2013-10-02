@@ -61,7 +61,7 @@ def split_text_in_tag(text, tag):
 
 script, jqz_file = argv
 
-FINAL_XHTML_FILE_NAME = '2_atariko.xhtml'
+FINAL_XHTML_FILE_NAME = 'atariko.xhtml'
 BASE_XHTML_FILE_NAME = 'atariko_base.xhtml'
 
 # -----------------
@@ -194,10 +194,16 @@ for question_record in question_records:
 
         html_chunks.append(html_chunk)
 
-# create the third activity
+# create html chunks for the data to insert
+html_chunk = BeautifulSoup()
+# create the questions activity
 activity3 = html_chunk.new_tag("div")
 activity3['class'] = 'stb_activities'
-activity3['data-file'] = 'at_ej3.stb'
+if (len(stb_uuids) > 1):
+    activity3['data-file'] = 'at_ej3.stb'
+else:
+    # this exercise might be sometimes the only exercise in the jqz file
+    activity3['data-file'] = 'at_ej1.stb'
 stb_uuid = str(uuid.uuid1())
 activity3['data-group'] = stb_uuid
 stb_uuids.append(stb_uuid)
@@ -206,24 +212,28 @@ stb_uuids.append(stb_uuid)
 #  CREATE THE STB FILES 
 # ----------------------
 
-# separate data for each stb file
+# separate data for each stb file if needed (this will only be necessary for 
+# the new exam model)
 # 
-# NOTE: the first 4 questions are for at_ej1.stb and at_ej2.stb (2 questions for each stb)
+# NOTE: in the new exam model the first 4 questions are for at_ej1.stb 
+# and at_ej2.stb (2 questions for each stb)
 # 
 separated_stb_file_data=[]
-for i in range(0,2):
-    limit = 2
-    at_ej_tests = root.findall('stb_test')[:limit]
-    separated_stb_file_data.append(at_ej_tests)
+if (len(stb_uuids) > 1):
+    for i in range(0,2):
+        limit = 2
+        at_ej_tests = root.findall('stb_test')[:limit]
+        separated_stb_file_data.append(at_ej_tests)
 
-    # after extarcting them erase them from the tests-compilation
-    for i in range(0,limit):
-        root.remove(at_ej_tests[i])
+        # after extarcting them erase them from the tests-compilation
+        for i in range(0,limit):
+            root.remove(at_ej_tests[i])
 
 separated_stb_file_data.append(root.findall('stb_test'))
 
 # complete and write the .stb files
-for i in range(1,4):
+i = 1
+for stb_uuid in stb_uuids:
     stb_file_name = 'at_ej' + str(i) + '.stb'
     # construct each .stb file's structure 
     print("Filling %s file with data..." % (stb_file_name,))
@@ -231,6 +241,7 @@ for i in range(1,4):
     stb_ag.set('uuid', stb_uuids[i-1])
     for j in separated_stb_file_data[i-1]:
         stb_ag.append(j)
+    i += 1
     # write each file
     print("Writing %s file..." % (stb_file_name,))
     rough_string = ElementTree.tostring(stb_ag, 'utf-8')
@@ -258,14 +269,28 @@ big_html_chunk = BeautifulSoup()
 for elem in html_chunks:
     big_html_chunk.append(elem)
 
-# find the spot where this big html chunk has to be inserted
-reading_spot = xhtml_soup.find('h3', text="Irakurri eta erantzun:")
+# find the spot where the exercises have to be interted
+exercise_spot = xhtml_soup.find('h2', text="Ariketak")
+
+questions_title = xhtml_soup.new_tag("h3")
+questions_title.append("Erantzun hoberena aukeratu:")
+exercise_spot.insert_after(questions_title)
+questions_title.insert_after(activity3)
+
+# if there is a reading exercise insert it before the question exercises
+if (len(stb_uuids) > 1):
+    reading_title = xhtml_soup.new_tag("h3")
+    reading_title.append("Irakurri eta erantzun:")
+    exercise_spot.insert_after(reading_title)
+    reading_title.insert_after(big_html_chunk)
+
+# reading_spot = xhtml_soup.find('h3', text="Irakurri eta  erantzun:")
 # insert it
-reading_spot.insert_after(big_html_chunk)
+# reading_spot.insert_after(big_html_chunk)
 
 # insert the last activity
-question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
-question_spot.insert_after(activity3)
+# question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
+# question_spot.insert_after(activity3)
 
 # write the final xhtml file
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
