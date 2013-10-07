@@ -97,6 +97,9 @@ with open (jqz_file, "r") as jqz:
 
 # Find the usefull data
 
+if model == "ir":
+    reading = soup.find_all("reading")
+
 question_records = soup.find_all("question-record")
 
 # Extract data and process it
