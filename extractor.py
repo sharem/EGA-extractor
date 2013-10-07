@@ -62,12 +62,29 @@ def split_text_in_tag(text, tag):
 
 # ----------# The script # ---------- #
 
-script, jqz_file = argv
+script, jqz_file, model = argv
 
-FINAL_XHTML_FILE_NAME = 'atariko.xhtml'
-BASE_XHTML_FILE_NAME = 'atariko_base.xhtml'
+ATARIKO_FILE_NAME = 'atariko.xhtml'
+ATARIKO_BASE_FILE_NAME = 'atariko_base.xhtml'
+
+IRAKURMEN_FILE_NAME = 'irakurmena.xhtml'
+IRAKURIMEN_BASE_FILE_NAME = 'irakurmena_base.xhtml'
 
 new_files_path = os.path.splitext(jqz_file)[0] + "/"
+
+# -------------------------------------
+#  PREPARATIONS BEFORE DATA EXTRACTION
+# -------------------------------------
+
+if model == "ir":
+    INPUT_XHTML_FILE = IRAKURIMEN_BASE_FILE_NAME
+    OUTPUT_XHTML_FILE = IRAKURMEN_FILE_NAME
+elif model == "at":
+    INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
+    OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
+else:
+    INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
+    OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
 
 # -----------------
 #  DATA EXTRACTION 
