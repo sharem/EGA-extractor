@@ -5,6 +5,7 @@ from xml.etree.ElementTree import Element, SubElement
 from xml.etree import ElementTree
 from xml.dom import minidom
 
+import os
 import re, htmlentitydefs, uuid
 
 
@@ -52,7 +53,9 @@ def split_text_in_tag(text, tag):
     # clean residual tags after the split (e.g.: </body>)
     for element in splited_text:
         cleaned_string = re.sub('<[^>]*>', '', element)
-        result.append(cleaned_string)
+        # to avoid empty strings
+        if cleaned_string.lstrip(' '):
+            result.append(cleaned_string)
     return result 
 
 
@@ -63,6 +66,8 @@ script, jqz_file = argv
 
 FINAL_XHTML_FILE_NAME = 'atariko.xhtml'
 BASE_XHTML_FILE_NAME = 'atariko_base.xhtml'
+
+new_files_path = os.path.splitext(jqz_file)[0] + "/"
 
 # -----------------
 #  DATA EXTRACTION 
@@ -107,8 +112,9 @@ for question_record in question_records:
         stb_question.text = strip_tags(unescape(question.string))
 
         for answer in answers:   
-            stb_option = SubElement(stb_test, 'stb_option')
-            stb_option.text = strip_tags(unescape(answer.findChild("text").string))
+            if answer.findChild("text").string:
+                stb_option = SubElement(stb_test, 'stb_option')
+                stb_option.text = strip_tags(unescape(answer.findChild("text").string))
             
             # If correct (=1) answer set the attribute 'correct'
             # print answer.findChild("correct").string
@@ -121,7 +127,6 @@ for question_record in question_records:
         # Extract and process data for the XHTML file
 
         extracted_text = BeautifulSoup(unescape(question.string))
-
         # clean and extract data from extracted_texts 
         text_title = extracted_text.strong.extract().text
         # print text_title
@@ -208,6 +213,11 @@ stb_uuid = str(uuid.uuid1())
 activity3['data-group'] = stb_uuid
 stb_uuids.append(stb_uuid)
 
+# before the starting the creation of the new files, check if the output path 
+# exists. If not, create it 
+if not os.path.exists(os.path.dirname(new_files_path)):
+    os.makedirs(os.path.dirname(new_files_path))
+
 # ----------------------
 #  CREATE THE STB FILES 
 # ----------------------
@@ -246,7 +256,7 @@ for stb_uuid in stb_uuids:
     print("Writing %s file..." % (stb_file_name,))
     rough_string = ElementTree.tostring(stb_ag, 'utf-8')
     reparsed = minidom.parseString(rough_string)
-    with open(stb_file_name, 'w') as new_stb_file:
+    with open(new_files_path + stb_file_name, 'w') as new_stb_file:
         new_stb_file.write(reparsed.toprettyxml(indent="  ", encoding="UTF-8"))
         print("File %s successfully created!" % (stb_file_name,))
 
@@ -294,6 +304,6 @@ if (len(stb_uuids) > 1):
 
 # write the final xhtml file
 print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
-with open (FINAL_XHTML_FILE_NAME, "w") as new_xhtml_file:
+with open (new_files_path + FINAL_XHTML_FILE_NAME, "w") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
     print("File %s successfully created!" % (FINAL_XHTML_FILE_NAME,))
