@@ -46,7 +46,7 @@ def strip_tags(html):
     s.feed(html)
     return s.get_data()
 
-# Iterative text extractor
+# Splits the given text in the tag
 def split_text_in_tag(text, tag):
     splited_text = str(text).split(str(tag))
     result = []
@@ -57,7 +57,6 @@ def split_text_in_tag(text, tag):
         if cleaned_string.lstrip(' '):
             result.append(cleaned_string)
     return result 
-
 
 
 # ----------# The script # ---------- #
@@ -79,12 +78,15 @@ new_files_path = os.path.splitext(jqz_file)[0] + "/"
 if model == "ir":
     INPUT_XHTML_FILE = IRAKURIMEN_BASE_FILE_NAME
     OUTPUT_XHTML_FILE = IRAKURMEN_FILE_NAME
+    FILENAME = 'id_ej'
 elif model == "at":
     INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
     OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
+    FILENAME = 'at_ej'
 else:
     INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
     OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
+    FILENAME = 'at_ej'
 
 # -----------------
 #  DATA EXTRACTION 
@@ -97,9 +99,6 @@ with open (jqz_file, "r") as jqz:
 
 # Find the usefull data
 
-if model == "ir":
-    reading = soup.find_all("reading")
-
 question_records = soup.find_all("question-record")
 
 # Extract data and process it
@@ -110,6 +109,49 @@ stb_uuids = []
 # root.set('uuid', str(uuid.uuid1()))
 x = 1
 html_chunks = []
+
+
+if model == "ir":
+    # extract the reading data that will go in the xhtml file
+    readings = soup.find_all("reading")
+    x = 0
+    for reading in readings:
+        x += 1
+        # retrieve the strings
+        text_title = strip_tags(unescape(reading.findChild("reading-title").string))
+
+        unclean_text = BeautifulSoup(unescape(reading.findChild("reading-text").string))
+        
+        paragraphs = unclean_text.find_all("p")
+        divided_text = []
+        for paragraph in paragraphs:
+            paragraph.extract()
+            divided_text.append(paragraph.text)
+
+        reading_text = '\n'.join(divided_text)
+        text_author = unclean_text.text.strip()
+        # print reading_text
+        # print text_author
+
+        # create html chunks for the data to insert
+        html_chunk = BeautifulSoup()
+
+        h4 = html_chunk.new_tag("h4")
+        h4.append(text_title)
+
+        p_text = html_chunk.new_tag("p")
+        p_text['class'] = 'exerciseText'
+        p_text.append(reading_text)
+
+        p_quote = html_chunk.new_tag("p")
+        p_quote['class'] = 'quoteText'
+        p_quote.append(text_author)
+
+        html_chunk.append(h4)
+        h4.insert_after(p_text)
+        p_text.insert_after(p_quote)
+
+        html_chunks.append(html_chunk)
 
 for question_record in question_records:
     
@@ -225,10 +267,10 @@ html_chunk = BeautifulSoup()
 activity3 = html_chunk.new_tag("div")
 activity3['class'] = 'stb_activities'
 if (len(stb_uuids) > 1):
-    activity3['data-file'] = 'at_ej3.stb'
+    activity3['data-file'] = FILENAME + '3.stb'
 else:
     # this exercise might be sometimes the only exercise in the jqz file
-    activity3['data-file'] = 'at_ej1.stb'
+    activity3['data-file'] = FILENAME + '1.stb'
 stb_uuid = str(uuid.uuid1())
 activity3['data-group'] = stb_uuid
 stb_uuids.append(stb_uuid)
@@ -264,7 +306,7 @@ separated_stb_file_data.append(root.findall('stb_test'))
 # complete and write the .stb files
 i = 1
 for stb_uuid in stb_uuids:
-    stb_file_name = 'at_ej' + str(i) + '.stb'
+    stb_file_name = FILENAME + str(i) + '.stb'
     # construct each .stb file's structure 
     print("Filling %s file with data..." % (stb_file_name,))
     stb_ag = Element('stb_ag')
@@ -286,44 +328,53 @@ for stb_uuid in stb_uuids:
 
 # Read the base xhtml file
 
-print("Opening %s file..." % (BASE_XHTML_FILE_NAME,))
-with open (BASE_XHTML_FILE_NAME, "r") as xhtml_file:
+print("Opening %s file..." % (INPUT_XHTML_FILE,))
+with open (INPUT_XHTML_FILE, "r") as xhtml_file:
     xhtml_soup = BeautifulSoup(xhtml_file, 'html')
 
 # Fill the base xhtml file with the extracted data
 
-print("Filling %s file with data..." % (FINAL_XHTML_FILE_NAME,))
+print("Filling %s file with data..." % (OUTPUT_XHTML_FILE,))
 
 # unify the small chunks in a larger one
 big_html_chunk = BeautifulSoup()
 for elem in html_chunks:
     big_html_chunk.append(elem)
 
-# find the spot where the exercises have to be interted
+# find the spot where the exercises have to be inserted
 exercise_spot = xhtml_soup.find('h2', text="Ariketak")
 
-questions_title = xhtml_soup.new_tag("h3")
-questions_title.append("Erantzun hoberena aukeratu:")
-exercise_spot.insert_after(questions_title)
-questions_title.insert_after(activity3)
+if model == "ir":
 
-# if there is a reading exercise insert it before the question exercises
-if (len(stb_uuids) > 1):
-    reading_title = xhtml_soup.new_tag("h3")
-    reading_title.append("Irakurri eta erantzun:")
-    exercise_spot.insert_after(reading_title)
-    reading_title.insert_after(big_html_chunk)
+    questions_title = xhtml_soup.new_tag("p")
+    questions_title.append("Irakurri hurrengo testua eta aukeratu erantzun zuzenak")
+    exercise_spot.insert_after(questions_title)
+    questions_title.insert_after(activity3)
+    questions_title.insert_after(big_html_chunk)
+else:
 
-# reading_spot = xhtml_soup.find('h3', text="Irakurri eta  erantzun:")
-# insert it
-# reading_spot.insert_after(big_html_chunk)
+    questions_title = xhtml_soup.new_tag("h3")
+    questions_title.append("Erantzun hoberena aukeratu:")
+    exercise_spot.insert_after(questions_title)
+    questions_title.insert_after(activity3)
 
-# insert the last activity
-# question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
-# question_spot.insert_after(activity3)
+    # if there is a reading exercise insert it before the question exercises
+    if (len(stb_uuids) > 1):
+        reading_title = xhtml_soup.new_tag("h3")
+        reading_title.append("Irakurri eta erantzun:")
+        exercise_spot.insert_after(reading_title)
+        reading_title.insert_after(big_html_chunk)
+
+    # reading_spot = xhtml_soup.find('h3', text="Irakurri eta  erantzun:")
+    # insert it
+    # reading_spot.insert_after(big_html_chunk)
+
+    # insert the last activity
+    # question_spot = xhtml_soup.find('h3', text="Erantzun hoberena aukeratu:")
+    # question_spot.insert_after(activity3)
 
 # write the final xhtml file
-print("Writing %s file..." % (FINAL_XHTML_FILE_NAME,))
-with open (new_files_path + FINAL_XHTML_FILE_NAME, "w") as new_xhtml_file:
+print("Writing %s file..." % (OUTPUT_XHTML_FILE,))
+with open (new_files_path + OUTPUT_XHTML_FILE, "w") as new_xhtml_file:
     new_xhtml_file.write(xhtml_soup.prettify().encode('utf-8'))
-    print("File %s successfully created!" % (FINAL_XHTML_FILE_NAME,))
+    print("File %s successfully created!" % (OUTPUT_XHTML_FILE,))
