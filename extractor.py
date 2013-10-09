@@ -169,26 +169,52 @@ for question_record in question_records:
     if len(strip_tags(unescape(question.string))) < 300:
         
         # Extract and process data for the STB file
-         
-        stb_test = SubElement(root, 'stb_test')
-        stb_test.set('uuid', str(uuid.uuid1()))
+        
+        if model == "ber":
 
-        config = SubElement(stb_test, 'config')
-        config.set('multiple', 'false')
-        config.set('shuffle', 'true')
+            question_parts = strip_tags(unescape(question.string)).split('\n',)
 
-        stb_question = SubElement(stb_test, 'stb_question')
-        stb_question.text = strip_tags(unescape(question.string))
+            stb_replace = SubElement(root, 'stb_replace')
+            stb_replace.set('uuid', str(uuid.uuid1()))
 
-        for answer in answers:   
-            if answer.findChild("text").string:
-                stb_option = SubElement(stb_test, 'stb_option')
-                stb_option.text = strip_tags(unescape(answer.findChild("text").string))
+            stb_question = SubElement(stb_replace, 'stb_question')
+            stb_question.text = question_parts[0]
             
-            # If correct (=1) answer set the attribute 'correct'
-            # print answer.findChild("correct").string
-            if answer.findChild("correct").string == '1':
-                stb_option.set('correct', 'true')
+            stb_content = SubElement(stb_replace, 'stb_content')
+            stb_content.text = question_parts[0]
+
+            stb_item = SubElement(stb_content, 'stb_item')
+            stb_item.set('solution','')
+
+            # replace the underscores in the content part of the 
+            # question with <stb_item solution="" /> (stb_item)    
+            undescores_regex = re.compile(r'_+')           
+            undescore_sets = undescores_regex.findall(question_parts[1])
+            print question_parts[1]
+            for undescore_set in undescore_sets:   
+                question_parts[1] = question_parts[1].replace(undescore_set, ElementTree.tostring(stb_item), 1)
+            print question_parts[1]
+
+        else: 
+            stb_test = SubElement(root, 'stb_test')
+            stb_test.set('uuid', str(uuid.uuid1()))
+
+            config = SubElement(stb_test, 'config')
+            config.set('multiple', 'false')
+            config.set('shuffle', 'true')
+
+            stb_question = SubElement(stb_test, 'stb_question')
+            stb_question.text = strip_tags(unescape(question.string))
+
+            for answer in answers:   
+                if answer.findChild("text").string:
+                    stb_option = SubElement(stb_test, 'stb_option')
+                    stb_option.text = strip_tags(unescape(answer.findChild("text").string))
+                
+                # If correct (=1) answer set the attribute 'correct'
+                # print answer.findChild("correct").string
+                if answer.findChild("correct").string == '1':
+                    stb_option.set('correct', 'true')
            
     # If the question is a reading exercise text (len()>300)
     else: 
