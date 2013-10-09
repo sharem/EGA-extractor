@@ -69,6 +69,9 @@ ATARIKO_BASE_FILE_NAME = 'atariko_base.xhtml'
 IRAKURMEN_FILE_NAME = 'irakurmena.xhtml'
 IRAKURIMEN_BASE_FILE_NAME = 'irakurmena_base.xhtml'
 
+ENTZUMEN_FILE_NAME = 'entzumena.xhtml'
+ENTZUMEN_BASE_FILE_NAME = 'entzumena_base.xhtml'
+
 new_files_path = os.path.splitext(jqz_file)[0] + "/"
 
 # -------------------------------------
@@ -83,6 +86,10 @@ elif model == "at":
     INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
     OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
     FILENAME = 'at_ej'
+elif model == "en":
+    INPUT_XHTML_FILE = ENTZUMEN_BASE_FILE_NAME
+    OUTPUT_XHTML_FILE = ENTZUMEN_FILE_NAME
+    FILENAME = 'en_ej'
 else:
     INPUT_XHTML_FILE = ATARIKO_BASE_FILE_NAME
     OUTPUT_XHTML_FILE = ATARIKO_FILE_NAME
@@ -345,14 +352,15 @@ for elem in html_chunks:
 exercise_spot = xhtml_soup.find('h2', text="Ariketak")
 
 if model == "ir":
-
     questions_title = xhtml_soup.new_tag("p")
     questions_title.append("Irakurri hurrengo testua eta aukeratu erantzun zuzenak")
     exercise_spot.insert_after(questions_title)
     questions_title.insert_after(activity3)
     questions_title.insert_after(big_html_chunk)
+elif model == "en":
+    exercise_spot = xhtml_soup.find('div', id="footer")
+    exercise_spot.insert_before(activity3)
 else:
-
     questions_title = xhtml_soup.new_tag("h3")
     questions_title.append("Erantzun hoberena aukeratu:")
     exercise_spot.insert_after(questions_title)
